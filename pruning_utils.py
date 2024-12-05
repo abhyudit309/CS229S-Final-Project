@@ -50,10 +50,11 @@ def l2_structured_prune(model, name1, name2, pruning_percentage, n_head):
     vnum_rows_to_keep -= vnum_rows_to_keep % n_head
     vrows_to_keep = torch.topk(vl2_norm, vnum_rows_to_keep, largest=True).indices
 
-    new_current_layer = nn.Linear(c_attn_layer.in_features, qnum_rows_to_keep + knum_rows_to_keep + vnum_rows_to_keep, bias=c_attn_layer.bias is not None)
-    new_current_layer.weight.data = torch.cat([q[qrows_to_keep, :] , k[krows_to_keep, :] , v[vrows_to_keep, :] ], dim=0)
+    new_c_attn_layer = nn.Linear(c_attn_layer.in_features, qnum_rows_to_keep + knum_rows_to_keep + vnum_rows_to_keep, bias=c_attn_layer.bias is not None)
+    new_c_attn_layer.weight.data = torch.cat([q[qrows_to_keep, :] , k[krows_to_keep, :] , v[vrows_to_keep, :] ], dim=0)
+    new_c_attn_layer.bias.data = new_c_attn_layer.bias.data.to(c_attn_layer.bias.data.device)
 
-    setattr(model, name1, new_current_layer)
+    setattr(model, name1, new_c_attn_layer)
     print("Pruned Shape: ", getattr(model, name1).weight.data.shape)
 
     c_proj_layer = getattr(model, name2)
