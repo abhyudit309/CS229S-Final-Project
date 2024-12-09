@@ -5,7 +5,7 @@ def quantization(x: torch.Tensor, s: float, z: int, a_q: int, b_q: int) -> torch
 
 
 def dequantization(x_q: torch.Tensor, s: float, z: int) -> torch.Tensor:
-    x_q = x_q.to(torch.int8)
+    x_q = x_q.to(torch.int32)
     x = s * (x_q - z)
     return x.to(torch.float32)
 

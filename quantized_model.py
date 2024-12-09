@@ -52,8 +52,9 @@ class LayerNorm(nn.Module):
             s, z = get_quantization_params(a, b, self.a_q, self.b_q)
             self.quantization_params[name] = (s, z)
 
-            param.data = quantization(param.data, s, z, self.a_q, self.b_q)
+            q_param = quantization(param.data, s, z, self.a_q, self.b_q)
             param.requires_grad = False
+            param.data = q_param
 
 
 class CausalSelfAttention(nn.Module):
@@ -132,8 +133,9 @@ class CausalSelfAttention(nn.Module):
             s, z = get_quantization_params(a, b, self.a_q, self.b_q)
             self.quantization_params[name] = (s, z)
 
-            param.data = quantization(param.data, s, z, self.a_q, self.b_q)
+            q_param = quantization(param.data, s, z, self.a_q, self.b_q)
             param.requires_grad = False
+            param.data = q_param
 
 
 class MLP(nn.Module):
@@ -181,8 +183,9 @@ class MLP(nn.Module):
             s, z = get_quantization_params(a, b, self.a_q, self.b_q)
             self.quantization_params[name] = (s, z)
 
-            param.data = quantization(param.data, s, z, self.a_q, self.b_q)
+            q_param = quantization(param.data, s, z, self.a_q, self.b_q)
             param.requires_grad = False
+            param.data = q_param
 
 
 class Block(nn.Module):
@@ -283,9 +286,9 @@ class Quantized_GPT(nn.Module):
             x = block(x)
         x = self.transformer.ln_f(x)
 
-        self.lm_head.weight.data = dequantization(self.lm_head.weight.data, *self.quantization_params['lm_head.weight'])
+        self.lm_head.weight.data = dequantization(self.lm_head.weight.data, *self.quantization_params['transformer.wte.weight'])
         logits = self.lm_head(x)
-        self.lm_head.weight.data = quantization(self.lm_head.weight.data, *self.quantization_params['lm_head.weight'], self.a_q, self.b_q)
+        self.lm_head.weight.data = quantization(self.lm_head.weight.data, *self.quantization_params['transformer.wte.weight'], self.a_q, self.b_q)
         
         if targets is not None:
             # if we are given some desired targets also calculate the loss
@@ -447,15 +450,17 @@ class Quantized_GPT(nn.Module):
         a, b = get_symmetric_range(self.transformer.wte.weight.data)
         s, z = get_quantization_params(a, b, self.a_q, self.b_q)
         self.quantization_params['transformer.wte.weight'] = (s, z)
-        self.transformer.wte.weight.data = quantization(self.transformer.wte.weight.data, s, z, self.a_q, self.b_q)
-        self.transformer.wte.weight.data.requires_grad = False
+        q_param = quantization(self.transformer.wte.weight.data, s, z, self.a_q, self.b_q)
+        self.transformer.wte.weight.requires_grad = False
+        self.transformer.wte.weight.data = q_param
 
         # Quantize position embeddings
         a, b = get_symmetric_range(self.transformer.wpe.weight.data)
         s, z = get_quantization_params(a, b, self.a_q, self.b_q)
         self.quantization_params['transformer.wpe.weight'] = (s, z)
-        self.transformer.wpe.weight.data = quantization(self.transformer.wpe.weight.data, s, z, self.a_q, self.b_q)
-        self.transformer.wpe.weight.data.requires_grad = False
+        q_param = quantization(self.transformer.wpe.weight.data, s, z, self.a_q, self.b_q)
+        self.transformer.wpe.weight.requires_grad = False
+        self.transformer.wpe.weight.data = q_param
 
         # Quantize Attention, MLP layers and LayerNorms
         for block in self.transformer.h:
